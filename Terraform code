@@ -1,0 +1,98 @@
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+      version = "4.21.0"
+    }
+  }
+}
+
+provider "aws" {
+  # Configuration options
+}
+
+
+
+
+resource "aws_instance" "web" {
+ ami           = "ami-052efd3df9dad4825"
+ instance_type = "t2.micro"
+ key_name = "LinuxKey"
+
+ tags = {
+   Name = "Terraform"
+   env = "Prod"
+ }
+}
+
+1 create an EC2 instance with 20 GB volume EBS
+2. Create a VPC subnet RT and IGW
+
+#creating aws instance
+resource "aws_instance" "good-morning" {
+  ami               = "ami-052efd3df9dad4825"
+  instance_type     = "t2.micro"
+  key_name = "LinuxKey"
+  availability_zone = "us-east-1a"
+
+  tags = {
+    Name = "Terraform"
+  }
+
+}
+
+#creating and attaching ebs volume
+
+resource "aws_ebs_volume" "data-vol" {
+  availability_zone = "us-east-1a"
+  size = 30
+  tags = {
+    Name = "data-volume"
+  }
+
+}
+# Attaching EBS
+
+resource "aws_volume_attachment" "good-morning-vol" {
+  device_name = "/dev/sdh"
+  volume_id = "${aws_ebs_volume.data-vol.id}"
+  instance_id = "${aws_instance.good-morning.id}"
+}
+
+
+resource "aws_vpc" "vpc" {
+cidr_block = "10.0.1.0/24"
+enable_dns_hostnames = true
+tags = {
+Name = "Test-vpc"
+}
+}
+resource "aws_subnet" "public_sub" {1
+vpc_id = "${aws_vpc.vpc.id}"
+cidr_block = "10.0.1.0/26"
+availability_zone = "us-east-1a"
+tags = {
+Name = "public_subnet"
+}
+}
+resource "aws_internet_gateway" "gw" {
+vpc_id = "${aws_vpc.vpc.id}"
+tags = {
+Name = "Test-igw"
+}
+}
+resource "aws_route_table" "pub_rt" {
+vpc_id = aws_vpc.vpc.id
+tags = {
+Name = "Test-pub-rt"
+}
+}
+resource "aws_route" "route" {
+route_table_id = "${aws_route_table.pub_rt.id}"
+destination_cidr_block = "0.0.0.0/0"
+gateway_id = "${aws_internet_gateway.gw.id}"
+}
+resource "aws_route_table_association" "rta" {
+subnet_id = aws_subnet.public_sub.id
+route_table_id = aws_route_table.pub_rt.id
+}
